@@ -23,35 +23,38 @@ def raw_torch_quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymme
         quantized_tensor = o
     return quantized_tensor
 
-tensor=torch.randn(1,128, 56,56).cuda()
-scale=torch.ones(1).cuda()*0.1
-zero_point=torch.ones(1).cuda()
+tensor=torch.randn(32,128, 56,56).cuda()
 qmin=-127
 qmax=128
-for asymmetric in [False,True]:
-    for simulate in [False,True]:
+for scale_shape in [(1,),(32,1,1,1),(32,),(1,128,1,1)]:
+    print(f"====== scale_shape: {scale_shape} =====")
+    scale=torch.ones(scale_shape).cuda()*0.1
+    zero_point=torch.ones(scale_shape).cuda()
 
-        # speed test for quant_cuda_tools.quant_tensor_forward, with warm up
-        for i in range(10):
-            qtensor=torch_quant_ext.quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
+    for asymmetric in [False,True]:
+        for simulate in [False,True]:
 
-        st=time.time()
-        for i in range(1000):
-            qtensor=torch_quant_ext.quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
-        ed=time.time()
-        print("quant_cuda_tools.quant_tensor_forward time:", ed-st)
+            # speed test for quant_cuda_tools.quant_tensor_forward, with warm up
+            for i in range(10):
+                qtensor=torch_quant_ext.quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
 
-        # speed test for raw_torch_quant_tensor_forward, with warm up
-        for i in range(10):
-            qtensor=raw_torch_quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
+            st=time.time()
+            for i in range(1000):
+                qtensor=torch_quant_ext.quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
+            ed=time.time()
+            print("quant_cuda_tools.quant_tensor_forward time:", ed-st)
 
-        st=time.time()
-        for i in range(1000):
-            qtensor=raw_torch_quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
-        ed=time.time()
-        print("raw_torch_quant_tensor_forward time:", ed-st)
+            # speed test for raw_torch_quant_tensor_forward, with warm up
+            for i in range(10):
+                qtensor=raw_torch_quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
 
-        # print(qtensor)
-        raw_qtensor=raw_torch_quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
-        # print(raw_qtensor)
-        assert torch.allclose(qtensor, raw_qtensor)
+            st=time.time()
+            for i in range(1000):
+                qtensor=raw_torch_quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
+            ed=time.time()
+            print("raw_torch_quant_tensor_forward time:", ed-st)
+
+            # print(qtensor)
+            raw_qtensor=raw_torch_quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
+            # print(raw_qtensor)
+            assert torch.allclose(qtensor, raw_qtensor)

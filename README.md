@@ -3,6 +3,21 @@
 ## Introduction
 This is a Pytorch extension for quantization with high-efficient CUDA kernels. The kernels are implemented in CUDA and C++ for speed. The extension can be used as a drop-in replacement for the quantization functions in Pytorch.
 
+Now Implemented:
+- [x] quant_tensor_forward
+    - [x] per-tensor quantization
+    - [x] symmetric and asymmetric quantization
+    - [x] simulate quantization
+    - [x] hardware quantization
+
+TODO:
+- quant_tensor_forward
+    - [ ] optimize for per-tensor quantization (one thread process multiple elements)
+    - [ ] optimize for hardware quantization
+    - [ ] per-channel quantization
+    - [ ] multi-dimensional quantization
+- [ ] quant_tensor_backward
+
 ## Install
 ```bash
 python setup.py install
