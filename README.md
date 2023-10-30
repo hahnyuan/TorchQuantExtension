@@ -60,30 +60,30 @@ python testing/test_quant_tensor.py
 In 3090, the benchmark result now is:
 ```
 ====== scale_shape: (1,) =====
-quant_cuda_tools.quant_tensor_forward time: 0.1658310890197754
-raw_torch_quant_tensor_forward time: 0.5000412464141846
-quant_cuda_tools.quant_tensor_forward time: 0.14867734909057617
-raw_torch_quant_tensor_forward time: 0.6218092441558838
-quant_cuda_tools.quant_tensor_forward time: 0.1491851806640625
-raw_torch_quant_tensor_forward time: 0.6219408512115479
-quant_cuda_tools.quant_tensor_forward time: 0.14947509765625
-raw_torch_quant_tensor_forward time: 0.8702328205108643
+quant_cuda_tools.quant_tensor_forward time: 0.16434168815612793
+raw_torch_quant_tensor_forward time: 0.49608373641967773
+quant_cuda_tools.quant_tensor_forward time: 0.14842557907104492
+raw_torch_quant_tensor_forward time: 0.6216511726379395
+quant_cuda_tools.quant_tensor_forward time: 0.1490321159362793
+raw_torch_quant_tensor_forward time: 0.6217072010040283
+quant_cuda_tools.quant_tensor_forward time: 0.14930939674377441
+raw_torch_quant_tensor_forward time: 0.8700952529907227
 ====== scale_shape: (32, 1, 1, 1) =====
-quant_cuda_tools.quant_tensor_forward time: 0.15418529510498047
-raw_torch_quant_tensor_forward time: 0.5008578300476074
-quant_cuda_tools.quant_tensor_forward time: 0.15454864501953125
-raw_torch_quant_tensor_forward time: 0.6247196197509766
-quant_cuda_tools.quant_tensor_forward time: 0.15569067001342773
-raw_torch_quant_tensor_forward time: 0.6252713203430176
-quant_cuda_tools.quant_tensor_forward time: 0.15563368797302246
-raw_torch_quant_tensor_forward time: 0.8722531795501709
+quant_cuda_tools.quant_tensor_forward time: 0.14836525917053223
+raw_torch_quant_tensor_forward time: 0.49754834175109863
+quant_cuda_tools.quant_tensor_forward time: 0.14853239059448242
+raw_torch_quant_tensor_forward time: 0.6219451427459717
+quant_cuda_tools.quant_tensor_forward time: 0.14851784706115723
+raw_torch_quant_tensor_forward time: 0.621967077255249
+quant_cuda_tools.quant_tensor_forward time: 0.14893770217895508
+raw_torch_quant_tensor_forward time: 0.8701951503753662
 ====== scale_shape: (1, 128, 1, 1) =====
-quant_cuda_tools.quant_tensor_forward time: 0.4161872863769531
-raw_torch_quant_tensor_forward time: 0.4959299564361572
-quant_cuda_tools.quant_tensor_forward time: 0.5526113510131836
-raw_torch_quant_tensor_forward time: 0.6204173564910889
-quant_cuda_tools.quant_tensor_forward time: 0.5526134967803955
-raw_torch_quant_tensor_forward time: 0.6205401420593262
-quant_cuda_tools.quant_tensor_forward time: 0.8255910873413086
-raw_torch_quant_tensor_forward time: 0.8694519996643066
+quant_cuda_tools.quant_tensor_forward time: 0.1670219898223877
+raw_torch_quant_tensor_forward time: 0.5074267387390137
+quant_cuda_tools.quant_tensor_forward time: 0.1672518253326416
+raw_torch_quant_tensor_forward time: 0.630223274230957
+quant_cuda_tools.quant_tensor_forward time: 0.16779541969299316
+raw_torch_quant_tensor_forward time: 0.6305780410766602
+quant_cuda_tools.quant_tensor_forward time: 0.16786408424377441
+raw_torch_quant_tensor_forward time: 0.8754994869232178
 ```
