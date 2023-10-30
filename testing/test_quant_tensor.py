@@ -46,6 +46,7 @@ for scale_shape in [
 
     for asymmetric in [False, True]:
         for simulate in [False, True]:
+            print(f" asymmetric {asymmetric}, simulate {simulate}>>")
             # speed test for quant_cuda_tools.quant_tensor_forward, with warm up
             for i in range(100):
                 qtensor = torch_quant_ext.quant_tensor_forward(
