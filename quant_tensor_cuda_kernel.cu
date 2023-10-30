@@ -54,7 +54,7 @@ __global__ void quant_tensor_pertensor_forward_kernel(
 }
 
 template <typename scalar_t>
-__global__ void quant_tensor_pertensor_sym_sim_fast(
+__global__ void quant_tensor_pertensor_sym_sim_fast_kernel(
     const scalar_t *tensor,
     const scalar_t *scale,
     scalar_t *quantized_tensor,
@@ -62,6 +62,7 @@ __global__ void quant_tensor_pertensor_sym_sim_fast(
     const long qmin,
     const long qmax)
 {
+    // Experimental fast kernel for symmetric quantization
     scalar_t s = scale[0];
     // index
     for (long i = 0; i < N_PER_THREAD; i++)
@@ -155,7 +156,7 @@ torch::Tensor quant_tensor_cuda_forward(
         auto quantized_tensor_ptr = quantized_tensor.data_ptr<float>();
         if (simulate && !asymmetric)
         {
-            quant_tensor_pertensor_sym_sim_fast<float><<<blocks, threads>>>(
+            quant_tensor_pertensor_sym_sim_fast_kernel<float><<<blocks, threads>>>(
                 tensor_ptr,
                 scale_ptr,
                 quantized_tensor_ptr,

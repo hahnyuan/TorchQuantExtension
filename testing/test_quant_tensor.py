@@ -27,7 +27,7 @@ def raw_torch_quant_tensor_forward(
     return quantized_tensor
 
 
-shape = [32, 128, 56, 56]
+shape = [512, 128, 56, 56]
 
 tensor = torch.randn(shape).cuda()
 qmin = -127
