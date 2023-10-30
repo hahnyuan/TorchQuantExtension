@@ -153,17 +153,17 @@ torch::Tensor quant_tensor_cuda_forward(
         auto scale_ptr = scale.data_ptr<float>();
         auto zero_point_ptr = zero_point.data_ptr<float>();
         auto quantized_tensor_ptr = quantized_tensor.data_ptr<float>();
-        // if (simulate && !asymmetric)
-        // {
-        //     quant_tensor_pertensor_sym_sim_fast<float><<<blocks, threads>>>(
-        //         tensor_ptr,
-        //         scale_ptr,
-        //         quantized_tensor_ptr,
-        //         tensor_numel,
-        //         qmin,
-        //         qmax);
-        //     return quantized_tensor;
-        // }
+        if (simulate && !asymmetric)
+        {
+            quant_tensor_pertensor_sym_sim_fast<float><<<blocks, threads>>>(
+                tensor_ptr,
+                scale_ptr,
+                quantized_tensor_ptr,
+                tensor_numel,
+                qmin,
+                qmax);
+            return quantized_tensor;
+        }
         quant_tensor_pertensor_forward_kernel<float><<<blocks, threads>>>(
             tensor_ptr,
             scale_ptr,
