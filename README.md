@@ -7,16 +7,17 @@ Now Implemented:
 - [x] quant_tensor_forward
     - [x] per-tensor quantization
     - [x] per-channel (dim=0) quantization
+    - [x] per-channel (dim=1) quantization
     - [x] symmetric and asymmetric quantization
     - [x] simulate quantization
     - [x] hardware quantization
 
 TODO:
 - quant_tensor_forward
-    - [ ] optimize for per-tensor quantization (one thread process multiple elements)
+    - [ ] schedule space search
     - [ ] optimize for hardware quantization
     - [ ] multi-dimensional quantization
-    - [ ] per-channel (dim>0) quantization
+    - [ ] per-channel (dim>1) quantization
 - [ ] quant_tensor_backward
 
 ## Install
@@ -35,8 +36,6 @@ Function `torch_quant_ext.quant_tensor_forward` arguments:
 - `asymmetric`: whether to use asymmetric quantization
 - `simulate`: whether to simulate quantization, if True, the function returns a simulated float32 tensor, otherwise, the function returns a integer tensor.
 
-The function returns a quantized tensor.
-
 Example
 ```python
 import torch
@@ -49,4 +48,42 @@ qmax=127
 asymmetric = False
 simulate = True
 qtensor=torch_quant_ext.quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
+```
+
+## Benchmark
+
+You can run the benchmark with the following command:
+```bash
+python testing/test_quant_tensor.py
+```
+
+In 3090, the benchmark result now is:
+```
+====== scale_shape: (1,) =====
+quant_cuda_tools.quant_tensor_forward time: 0.1658310890197754
+raw_torch_quant_tensor_forward time: 0.5000412464141846
+quant_cuda_tools.quant_tensor_forward time: 0.14867734909057617
+raw_torch_quant_tensor_forward time: 0.6218092441558838
+quant_cuda_tools.quant_tensor_forward time: 0.1491851806640625
+raw_torch_quant_tensor_forward time: 0.6219408512115479
+quant_cuda_tools.quant_tensor_forward time: 0.14947509765625
+raw_torch_quant_tensor_forward time: 0.8702328205108643
+====== scale_shape: (32, 1, 1, 1) =====
+quant_cuda_tools.quant_tensor_forward time: 0.15418529510498047
+raw_torch_quant_tensor_forward time: 0.5008578300476074
+quant_cuda_tools.quant_tensor_forward time: 0.15454864501953125
+raw_torch_quant_tensor_forward time: 0.6247196197509766
+quant_cuda_tools.quant_tensor_forward time: 0.15569067001342773
+raw_torch_quant_tensor_forward time: 0.6252713203430176
+quant_cuda_tools.quant_tensor_forward time: 0.15563368797302246
+raw_torch_quant_tensor_forward time: 0.8722531795501709
+====== scale_shape: (1, 128, 1, 1) =====
+quant_cuda_tools.quant_tensor_forward time: 0.4161872863769531
+raw_torch_quant_tensor_forward time: 0.4959299564361572
+quant_cuda_tools.quant_tensor_forward time: 0.5526113510131836
+raw_torch_quant_tensor_forward time: 0.6204173564910889
+quant_cuda_tools.quant_tensor_forward time: 0.5526134967803955
+raw_torch_quant_tensor_forward time: 0.6205401420593262
+quant_cuda_tools.quant_tensor_forward time: 0.8255910873413086
+raw_torch_quant_tensor_forward time: 0.8694519996643066
 ```
