@@ -11,7 +11,7 @@ python setup.py install
 ## Usage
 ```python
 import torch
-import quant_cuda_tools
+import torch_quant_ext
 tensor=torch.randn(1,128, 56,56).cuda()
 scale=torch.ones(1).cuda()*0.1
 zero_point=torch.zeros(1).cuda()
@@ -19,5 +19,5 @@ qmin=-127
 qmax=128
 asymmetric = False
 simulate = True
-qtensor=quant_cuda_tools.quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
+qtensor=torch_quant_ext.quant_tensor_forward(tensor, scale, zero_point, qmin, qmax, asymmetric, simulate)
 ```

@@ -67,6 +67,7 @@ torch::Tensor quant_tensor_cuda_forward(
     auto quantized_tensor = torch::zeros_like(tensor);
     if (scale_numel == 1)
     {
+        // per-tensor quantization
         const int threads = 32;
         const dim3 blocks((tensor_numel + threads - 1) / threads);
         auto tensor_ptr = tensor.data_ptr<float>();
@@ -120,7 +121,7 @@ torch::Tensor quant_tensor_cuda_forward(
             out = out.to(torch::kInt);
         }
         quantized_tensor = out;
-        }
+    }
     return quantized_tensor;
 }
 
