@@ -182,6 +182,59 @@ __global__ void quant_tensor_g1_forward_kernel(
     }
 }
 
+template <typename scalar_t>
+__global__ void quant_tensor_g1_forward_elewise_kernel(
+
+    const scalar_t *tensor,
+    const scalar_t *scale,
+    const scalar_t *zero_point,
+    scalar_t *quantized_tensor,
+    const long nd0,
+    const long nd1,
+    const long nd2,
+    const long qmin,
+    const long qmax,
+    const bool asymmetric,
+    const bool simulate)
+{
+    // index
+    long ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ind < nd0 * nd1 * nd2)
+    {
+        const long d2 = ind % nd2;
+        const long d1 = (ind / nd2) % nd1;
+        const long d0 = ind / (nd1 * nd2);
+
+        scalar_t s = scale[d1];
+        scalar_t zp = asymmetric ? zero_point[d1] : 0;
+        const long addr = d0 * nd1 * nd2 + d1 * nd2 + d2;
+        float o = floorf(tensor[addr] / s + 0.5);
+
+        if (asymmetric)
+        {
+            o += zp;
+        }
+        o = fmin(fmax(o, qmin), qmax);
+        // print block.x thread.x and ind and addr
+        // printf("ind %d, s %f, tensor[ind], %f, o %d, qmin %d, qmax %d\nblock info blockIdx.x=%d, blockIdx.y=%d, blockDim.x=%d, threadIdx.x=%d, ind=%d, nd0=%d, nd1=%d, nd2=%d, d0=%d, d1=%d, d2=%d, addr=%d\n", ind, s, tensor[ind], o, qmin, qmax, blockIdx.x, blockIdx.y, blockDim.x, threadIdx.x, ind, nd0, nd1, nd2, d0, d1, d2, addr);
+        if (simulate)
+        {
+            if (asymmetric)
+            {
+                quantized_tensor[addr] = (o - zp) * s;
+            }
+            else
+            {
+                quantized_tensor[addr] = o * s;
+            }
+        }
+        else
+        {
+            quantized_tensor[addr] = o;
+        }
+    }
+}
+
 torch::Tensor quant_tensor_cuda_forward(
     torch::Tensor tensor,
     torch::Tensor scale,
@@ -256,28 +309,66 @@ torch::Tensor quant_tensor_cuda_forward(
                 simulate);
             return quantized_tensor;
         }
-        if (scale_numel == tensor.size(1))
+        // 找出scale所有dim不为1的dim
+        std::vector<int> scale_dims;
+        bool is_scale_dim_contiguous = true;
+        int previous_dim = -1;
+        for (int i = 0; i < scale.dim(); i++)
+        {
+            if (scale.size(i) != 1)
+            {
+                scale_dims.push_back(i);
+                if (previous_dim >= 0 && previous_dim + 1 != i)
+                {
+                    is_scale_dim_contiguous = false;
+                }
+                previous_dim = i;
+            }
+        }
+        if (is_scale_dim_contiguous)
         {
             // per channel (second dimension) quantization
-            const long first_dim = tensor.size(0);
+            long first_dim = 1;
+            for (int i = 0; i < scale_dims[0]; i++)
+            {
+                first_dim *= tensor.size(i);
+            }
             auto tensor_view = tensor.view({first_dim, scale_numel, -1});
             const long threads = 64;
             const long n_per_channel = tensor_view.size(2);
-            const dim3 blocks((n_per_channel * first_dim + threads - 1) / threads);
+            long blocks = (n_per_channel * first_dim + threads - 1) / threads;
             auto quantized_tensor = torch::zeros_like(tensor);
-
-            quant_tensor_g1_forward_kernel<float><<<blocks, threads>>>(
-                tensor_view.data_ptr<float>(),
-                scale.data_ptr<float>(),
-                zero_point.data_ptr<float>(),
-                quantized_tensor.data_ptr<float>(),
-                first_dim,
-                scale_numel,
-                n_per_channel,
-                qmin,
-                qmax,
-                asymmetric,
-                simulate);
+            if (blocks > 128)
+            {
+                quant_tensor_g1_forward_kernel<float><<<blocks, threads>>>(
+                    tensor_view.data_ptr<float>(),
+                    scale.data_ptr<float>(),
+                    zero_point.data_ptr<float>(),
+                    quantized_tensor.data_ptr<float>(),
+                    first_dim,
+                    scale_numel,
+                    n_per_channel,
+                    qmin,
+                    qmax,
+                    asymmetric,
+                    simulate);
+            }
+            else
+            {
+                blocks = (tensor_numel + threads - 1) / threads;
+                quant_tensor_g1_forward_elewise_kernel<float><<<blocks, threads>>>(
+                    tensor_view.data_ptr<float>(),
+                    scale.data_ptr<float>(),
+                    zero_point.data_ptr<float>(),
+                    quantized_tensor.data_ptr<float>(),
+                    first_dim,
+                    scale_numel,
+                    n_per_channel,
+                    qmin,
+                    qmax,
+                    asymmetric,
+                    simulate);
+            }
             return quantized_tensor;
         }
     }

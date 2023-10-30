@@ -28,13 +28,18 @@ def raw_torch_quant_tensor_forward(
 
 
 shape = [32, 128, 56, 56]
-shape = [2, 3, 2, 1]
+# shape = [2, 3, 2, 1]
 
 tensor = torch.randn(shape).cuda()
 qmin = -128
 qmax = 127
 # for scale_shape in [(1,), (shape[0], 1, 1, 1), (1, shape[1], 1, 1)]:
-for scale_shape in [(1, shape[1], 1, 1)]:
+for scale_shape in [
+    (1, shape[1], 1, 1),
+    (shape[0], shape[1], 1, 1),
+    (1, shape[1], 1, shape[3]),
+    (1, shape[1], shape[2], 1),
+]:
     print(f"====== scale_shape: {scale_shape} =====")
     scale = torch.randn(scale_shape).cuda() * 0.1
     zero_point = torch.randn(scale_shape).cuda()

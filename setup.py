@@ -10,5 +10,5 @@ setup(
     name="torch_quant_ext",
     ext_modules=[ext_module],
     cmdclass={"build_ext": cpp_extension.BuildExtension},
-    version="0.1.2",
+    version="0.1.3",
 )
