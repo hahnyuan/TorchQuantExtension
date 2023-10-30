@@ -18,7 +18,7 @@ import time
 # write test code for quant_cuda_tools.quant_tensor_forward
 
 tensor=torch.randn(1,128, 56,56).cuda()
-scale=torch.ones(1).cuda()*0.1
+scale=torch.ones(1,128,1,1).cuda()*0.1
 zero_point=torch.zeros(1).cuda()
 qmin=-127
 qmax=128
