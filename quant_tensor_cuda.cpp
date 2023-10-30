@@ -8,8 +8,8 @@ torch::Tensor quant_tensor_cuda_forward(
     torch::Tensor tensor,
     torch::Tensor scale,
     torch::Tensor zero_point,
-    const int qmin,
-    const int qmax,
+    const long qmin,
+    const long qmax,
     bool asymmetric = false,
     bool simulate = true);
 
@@ -28,8 +28,8 @@ torch::Tensor quant_tensor_forward(
     torch::Tensor tensor,
     torch::Tensor scale,
     torch::Tensor zero_point,
-    const int qmin,
-    const int qmax,
+    const long qmin,
+    const long qmax,
     bool asymmetric = false,
     bool simulate = true)
 {

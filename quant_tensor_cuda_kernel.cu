@@ -4,6 +4,7 @@
 #include <cuda_runtime.h>
 
 #include <vector>
+#define N_PER_THREAD 16
 
 template <typename scalar_t>
 __global__ void quant_tensor_pertensor_forward_kernel(
@@ -11,39 +12,67 @@ __global__ void quant_tensor_pertensor_forward_kernel(
     const scalar_t *scale,
     const scalar_t *zero_point,
     scalar_t *quantized_tensor,
-    const int tensor_numel,
-    const int qmin,
-    const int qmax,
+    const long tensor_numel,
+    const long qmin,
+    const long qmax,
     const bool asymmetric, const bool simulate)
 {
     scalar_t s = scale[0];
     scalar_t zp = asymmetric ? zero_point[0] : 0;
     // index
-    const int ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (ind < tensor_numel)
+    for (long i = 0; i < N_PER_THREAD; i++)
     {
-        float o = floorf(tensor[ind] / s + 0.5);
+        const long ind = i * (blockDim.x * gridDim.x) + blockIdx.x * blockDim.x + threadIdx.x;
+        // const long ind = blockIdx.x * blockDim.x + threadIdx.x;
+        if (ind < tensor_numel)
+        {
+            float o = floorf(tensor[ind] / s + 0.5);
 
-        if (asymmetric)
-        {
-            o += zp;
-        }
-        o = fmin(fmax(o, qmin), qmax);
-        // printf("ind %d, s %f, tensor[ind], %f, o %d, qmin %d, qmax %d\n", ind, s, tensor[ind], o, qmin, qmax);
-        if (simulate)
-        {
             if (asymmetric)
             {
-                quantized_tensor[ind] = (o - zp) * s;
+                o += zp;
+            }
+            o = fmin(fmax(o, qmin), qmax);
+            // printf("ind %d, s %f, tensor[ind], %f, o %d, qmin %d, qmax %d\n", ind, s, tensor[ind], o, qmin, qmax);
+            if (simulate)
+            {
+                if (asymmetric)
+                {
+                    quantized_tensor[ind] = (o - zp) * s;
+                }
+                else
+                {
+                    quantized_tensor[ind] = o * s;
+                }
             }
             else
             {
-                quantized_tensor[ind] = o * s;
+                quantized_tensor[ind] = o;
             }
         }
-        else
+    }
+}
+
+template <typename scalar_t>
+__global__ void quant_tensor_pertensor_sym_sim_fast(
+    const scalar_t *tensor,
+    const scalar_t *scale,
+    scalar_t *quantized_tensor,
+    const long tensor_numel,
+    const long qmin,
+    const long qmax)
+{
+    scalar_t s = scale[0];
+    // index
+    for (long i = 0; i < N_PER_THREAD; i++)
+    {
+        const long ind = i * (blockDim.x * gridDim.x) + blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (ind < tensor_numel)
         {
-            quantized_tensor[ind] = o;
+            float o = floorf(tensor[ind] / s + 0.5);
+            o = fmin(fmax(o, qmin), qmax);
+            quantized_tensor[ind] = o * s;
         }
     }
 }
@@ -51,46 +80,49 @@ __global__ void quant_tensor_pertensor_forward_kernel(
 template <typename scalar_t>
 __global__ void quant_tensor_g0_forward_kernel(
 
-    const torch::PackedTensorAccessor32<scalar_t, 2, torch::RestrictPtrTraits> tensor,
+    const scalar_t *tensor,
     const scalar_t *scale,
     const scalar_t *zero_point,
-    torch::PackedTensorAccessor32<scalar_t, 2, torch::RestrictPtrTraits> quantized_tensor,
-    const int n_per_channel,
-    const int qmin,
-    const int qmax,
+    scalar_t *quantized_tensor,
+    const long scale_num,
+    const long n_per_channel,
+    const long qmin,
+    const long qmax,
     const bool asymmetric,
     const bool simulate)
 {
-    const int c = blockIdx.x;
-    scalar_t s = scale[c];
-    scalar_t zp = asymmetric ? zero_point[0] : 0;
-
     // index
-    const int ind = blockIdx.x * blockDim.x + threadIdx.x;
+    long ind = blockIdx.x * blockDim.x + threadIdx.x;
     if (ind < n_per_channel)
     {
-        float o = floorf(tensor[c][ind] / s + 0.5);
+        for (int c = 0; c < scale_num; c++)
+        {
+            scalar_t s = scale[c];
+            scalar_t zp = asymmetric ? zero_point[c] : 0;
+            float o = floorf(tensor[ind] / s + 0.5);
 
-        if (asymmetric)
-        {
-            o += zp;
-        }
-        o = fmin(fmax(o, qmin), qmax);
-        // printf("ind %d, s %f, tensor[ind], %f, o %d, qmin %d, qmax %d\n", ind, s, tensor[ind], o, qmin, qmax);
-        if (simulate)
-        {
             if (asymmetric)
             {
-                quantized_tensor[c][ind] = (o - zp) * s;
+                o += zp;
+            }
+            o = fmin(fmax(o, qmin), qmax);
+            // printf("ind %d, s %f, tensor[ind], %f, o %d, qmin %d, qmax %d\nblock info blockIdx.x=%d, blockIdx.y=%d, blockDim.x=%d, threadIdx.x=%d, ind=%d, n_per_channel=%d, c=%d\n", ind, s, tensor[ind], o, qmin, qmax, blockIdx.x, blockIdx.y, blockDim.x, threadIdx.x, ind, n_per_channel, c);
+            if (simulate)
+            {
+                if (asymmetric)
+                {
+                    quantized_tensor[ind] = (o - zp) * s;
+                }
+                else
+                {
+                    quantized_tensor[ind] = o * s;
+                }
             }
             else
             {
-                quantized_tensor[c][ind] = o * s;
+                quantized_tensor[ind] = o;
             }
-        }
-        else
-        {
-            quantized_tensor[c][ind] = o;
+            ind += n_per_channel;
         }
     }
 }
@@ -99,8 +131,8 @@ torch::Tensor quant_tensor_cuda_forward(
     torch::Tensor tensor,
     torch::Tensor scale,
     torch::Tensor zero_point,
-    const int qmin,
-    const int qmax,
+    const long qmin,
+    const long qmax,
     bool asymmetric = false,
     bool simulate = true)
 {
@@ -115,13 +147,23 @@ torch::Tensor quant_tensor_cuda_forward(
     {
         // per-tensor quantization
         auto quantized_tensor = torch::zeros_like(tensor);
-        const int threads = 32;
-        const dim3 blocks((tensor_numel + threads - 1) / threads);
+        const long threads = 64;
+        const dim3 blocks((tensor_numel + (threads * N_PER_THREAD) - 1) / (threads * N_PER_THREAD));
         auto tensor_ptr = tensor.data_ptr<float>();
         auto scale_ptr = scale.data_ptr<float>();
         auto zero_point_ptr = zero_point.data_ptr<float>();
         auto quantized_tensor_ptr = quantized_tensor.data_ptr<float>();
-
+        // if (simulate && !asymmetric)
+        // {
+        //     quant_tensor_pertensor_sym_sim_fast<float><<<blocks, threads>>>(
+        //         tensor_ptr,
+        //         scale_ptr,
+        //         quantized_tensor_ptr,
+        //         tensor_numel,
+        //         qmin,
+        //         qmax);
+        //     return quantized_tensor;
+        // }
         quant_tensor_pertensor_forward_kernel<float><<<blocks, threads>>>(
             tensor_ptr,
             scale_ptr,
@@ -139,24 +181,25 @@ torch::Tensor quant_tensor_cuda_forward(
 
         if (scale_numel == tensor.size(0))
         {
+            // printf("quant_tensor_g0_forward_kernel scale_numel %d", scale_numel);
             // per channel (one-dimensional) quantization
             auto tensor_view = tensor.view({scale_numel, -1});
-            const int threads = 32;
-            const int n_per_channel = tensor_view.size(1);
-            const dim3 blocks(scale_numel, (n_per_channel + threads - 1) / threads);
-            auto quantized_tensor = torch::zeros_like(tensor_view);
+            const long threads = 32;
+            const long n_per_channel = tensor_view.size(1);
+            const dim3 blocks((n_per_channel + threads - 1) / threads);
+            auto quantized_tensor = torch::zeros_like(tensor);
 
             quant_tensor_g0_forward_kernel<float><<<blocks, threads>>>(
-                tensor_view.packed_accessor32<float, 2, torch::RestrictPtrTraits>(),
+                tensor_view.data_ptr<float>(),
                 scale.data_ptr<float>(),
                 zero_point.data_ptr<float>(),
-                quantized_tensor.packed_accessor32<float, 2, torch::RestrictPtrTraits>(),
+                quantized_tensor.data_ptr<float>(),
+                scale_numel,
                 n_per_channel,
                 qmin,
                 qmax,
                 asymmetric,
                 simulate);
-            quantized_tensor = quantized_tensor.view_as(tensor);
             return quantized_tensor;
         }
     }
@@ -175,10 +218,6 @@ torch::Tensor quant_tensor_cuda_forward(
             out = out.sub_(zero_point);
         }
         out = out.mul_(scale);
-    }
-    else
-    {
-        out = out.to(torch::kInt);
     }
     return out;
 }
